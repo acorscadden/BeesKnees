@@ -54,20 +54,19 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     hive.position = CGPoint( x: CGRectGetMidX(frame), y: CGRectGetMaxY(frame)-50)
     hive.xScale = 0.25
     hive.yScale = 0.25
-    hive.physicsBody = SKPhysicsBody(edgeLoopFromRect: hive.frame)
+    hive.physicsBody = SKPhysicsBody(edgeLoopFromRect: CGRectMake(-hive.size.width/2, -hive.size.height/2, hive.size.width, hive.size.height))
     hive.name = "ball"
     addChild(hive)
   }
   
   func addBackground(){
     let sky = SKSpriteNode(color: UIColor.blueColor(), size: CGSizeMake(CGRectGetWidth(self.frame)*2, CGRectGetHeight(self.frame)))
-    let ground = SKSpriteNode(color: UIColor.greenColor(), size: CGSizeMake(CGRectGetWidth(self.frame)*2, CGRectGetHeight(self.frame)))
     sky.position = CGPointMake(0, CGRectGetHeight(self.frame)/2)
     addChild(sky)
     
+    let ground = SKSpriteNode(color: UIColor.greenColor(), size: CGSizeMake(CGRectGetWidth(self.frame)*2, CGRectGetHeight(self.frame)))
     ground.position = CGPointMake(0, 0)
     addChild(ground)
-    
     
     let bottomRect = CGRectMake(0, 0, self.frame.size.width*2, 250/2)
     var bottom = SKSpriteNode(color: UIColor.brownColor(), size: CGSizeMake(CGRectGetWidth(frame)*2, 250))
@@ -92,8 +91,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
       flower.xScale = 0.25
       flower.yScale = 0.25
       flower.position = CGPointMake(200.0*CGFloat(index), CGFloat(arc4random()%300) + 300.0)
-      flower.physicsBody = SKPhysicsBody(edgeLoopFromRect: flower.frame)
-      flower.physicsBody?.dynamic = false
+      flower.physicsBody = SKPhysicsBody(edgeLoopFromRect: CGRectMake(-flower.size.width/2, 0, flower.size.width, (flower.size.height/2)))
       addChild(flower)
       flowers.append(flower)
     }
