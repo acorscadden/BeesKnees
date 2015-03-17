@@ -55,7 +55,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     hive.xScale = 0.25
     hive.yScale = 0.25
     hive.physicsBody = SKPhysicsBody(edgeLoopFromRect: CGRectMake(-hive.size.width/2, -hive.size.height/2, hive.size.width, hive.size.height))
-    hive.name = "ball"
+    hive.name = "hive"
     addChild(hive)
   }
   
@@ -181,16 +181,26 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
  
   override func update(currentTime: CFTimeInterval) {
     if !dead {
+      //Update Flower
       for aFlower in flowers {
-        var position = aFlower.position
-        position.x = position.x - 4
-        if position.x < 0 {
-          position.x = CGRectGetWidth(self.frame)
-        }
-        aFlower.position = position
+        aFlower.position = movePositionToLeft(aFlower.position, speed: 5.0)
       }
+      
+      //Update Hive
+      hive.position = movePositionToLeft(hive.position, speed: 7.5)
+      
+      //Rotate Bee
       bee.zRotation = clamp( -1, max: 0.5, value: CGFloat(bee.physicsBody!.velocity.dy * ( bee.physicsBody!.velocity.dy < 0 ? 0.003 : 0.001 )) );
     }
+  }
+  
+  func movePositionToLeft( position:CGPoint, speed:CGFloat ) -> CGPoint {
+    var newPosition = position
+    newPosition.x = newPosition.x - speed;
+    if newPosition.x < 0 {
+      newPosition.x = CGRectGetWidth(self.frame)
+    }
+    return newPosition
   }
   
   func incrementFlowerCount(){
@@ -208,21 +218,36 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
   
   func didBeginContact(contact: SKPhysicsContact) {
     
-    println("collision \(contact.bodyA.categoryBitMask), \(contact.bodyB.categoryBitMask)")
+    var tempFirstBody:SKPhysicsBody?
+    var tempSecondBody:SKPhysicsBody?
     
-    if let nameA = contact.bodyA.node?.name {
-      if let nameB = contact.bodyB.node?.name {
-        if nameA == "flower" && nameB == "ball" {
+    if contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask {
+      tempFirstBody = contact.bodyA
+      tempSecondBody = contact.bodyB
+    } else {
+      tempFirstBody = contact.bodyB
+      tempSecondBody = contact.bodyA
+    }
+    
+    if let firstBody = tempFirstBody {
+      if let secondBody = tempSecondBody {
+        
+        if (firstBody.categoryBitMask & bottomCategory) != 0 {
+          gameOver()
+        }
+        
+        if (secondBody.categoryBitMask & flowerCategory) != 0 {
+          if let flower = secondBody.node as? SKSpriteNode {
+            flower.texture = SKTexture(imageNamed: "flowerPoof")
+          }
           incrementFlowerCount()
         }
+        
+        if (secondBody.categoryBitMask & hiveCategory) != 0 {
+          println("hive")
+        }
+        
       }
     }
-    
-    
-    if contact.bodyA.categoryBitMask == 1 && contact.bodyB.categoryBitMask == 2 {
-      gameOver()
-    }
-    
   }
-  
 }
