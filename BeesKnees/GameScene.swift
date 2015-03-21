@@ -1,3 +1,4 @@
+
 //
 //  GameScene.swift
 //  BeesKnees
@@ -13,17 +14,23 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
   let bottomCategory: UInt32 = 1
   let beeCategory:    UInt32 = 1 << 1
   let flowerCategory: UInt32 = 1 << 2
-  let hiveCategory:   UInt32 = 1 << 3
-  let spiderCategory: UInt32 = 1 << 4
+  let stemCategory:   UInt32 = 1 << 3
   
-  let flowerCountLabel =  SKLabelNode(text: "Flowers: ")
-  var bee =               SKSpriteNode(imageNamed: "bee1")
-  var retry =             SKLabelNode(fontNamed: "Chalkduster")
-  var hive =              SKSpriteNode(imageNamed: "hive")
+  let kHighScoreKey = "HighScoreKey"
   
-  var flowers:[SKSpriteNode] = []
-  var flowerCount: Int = 0
+  let scoreLabel =      SKLabelNode(text: "Score: ")
+  let highScoreLabel =  SKLabelNode(text: "High Score: ")
+  var bee =             Bee()
+  var retry =           SKLabelNode(fontNamed: "Chalkduster")
+  
+  var flowers:[Flower] = []
+  var stems:[SKSpriteNode] = []
   var dead = false
+  var score: Int = 0 {
+    didSet{
+      scoreLabel.text = "Score: \(score)"
+    }
+  }
   
   override func didMoveToView(view: SKView) {
     addBackground()
@@ -31,34 +38,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     addLabels()
     addBee()
     addRetry()
-    addHive()
     setPhysicsCategories()
+    setHighScoreLabel()
     physicsWorld.contactDelegate = self
   }
   
-  func setPhysicsCategories(){
-    for aFlower in flowers {
-      aFlower.physicsBody!.categoryBitMask = flowerCategory
-      aFlower.physicsBody!.contactTestBitMask = beeCategory
-    }
-    bee.physicsBody!.categoryBitMask = beeCategory
-    bee.physicsBody!.contactTestBitMask = flowerCategory | hiveCategory | spiderCategory | bottomCategory
-    bee.physicsBody!.collisionBitMask = bottomCategory
-    
-    hive.physicsBody!.categoryBitMask = hiveCategory
-    hive.physicsBody!.contactTestBitMask = beeCategory
-    
-  }
-  
-  func addHive(){
-    hive.position = CGPoint( x: CGRectGetMidX(frame), y: CGRectGetMaxY(frame)-50)
-    hive.xScale = 0.25
-    hive.yScale = 0.25
-    hive.physicsBody = SKPhysicsBody(edgeLoopFromRect: CGRectMake(-hive.size.width/2, -hive.size.height/2, hive.size.width, hive.size.height))
-    hive.name = "hive"
-    addChild(hive)
-  }
-  
+  // MARK: View Adders
   func addBackground(){
     let sky = SKSpriteNode(color: UIColor.blueColor(), size: CGSizeMake(CGRectGetWidth(self.frame)*2, CGRectGetHeight(self.frame)))
     sky.position = CGPointMake(0, CGRectGetHeight(self.frame)/2)
@@ -77,23 +62,33 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
   }
   
   func addLabels(){
-    flowerCountLabel.position = CGPoint(x:CGRectGetMidX(self.frame)/2 + 100, y:CGRectGetMaxY(self.frame)-30)
-    flowerCountLabel.fontName = "Helvetica"
-    flowerCountLabel.fontSize = 20
-    addChild(flowerCountLabel)
+    scoreLabel.position = CGPoint(x:50, y:CGRectGetMaxY(self.frame)-30)
+    scoreLabel.fontName = "Helvetica"
+    scoreLabel.fontSize = 20
+    addChild(scoreLabel)
+    
+    highScoreLabel.position = CGPoint(x: 210, y: scoreLabel.position.y)
+    highScoreLabel.fontName = "Helvetica"
+    highScoreLabel.fontSize = 20
+    addChild(highScoreLabel)
   }
   
   func addFlowers(){
-    var flowerCount = 5;
-    for index in 0...flowerCount {
-      var flower = SKSpriteNode(imageNamed: "flower")
-      flower.name = "flower"
-      flower.xScale = 0.25
-      flower.yScale = 0.25
-      flower.position = CGPointMake(200.0*CGFloat(index), CGFloat(arc4random()%300) + 300.0)
-      flower.physicsBody = SKPhysicsBody(edgeLoopFromRect: CGRectMake(-flower.size.width/2, 0, flower.size.width, (flower.size.height/2)))
+    var flowerCount = 1;
+    for index in 0..<flowerCount {
+      var flower = Flower()
+      flower.physicsBody = SKPhysicsBody(edgeLoopFromRect: CGRectMake(-flower.size.width/2, -flower.size.height/2, flower.size.width, flower.size.height))
+      
       addChild(flower)
       flowers.append(flower)
+    }
+    
+    setFlowerStartingPositions()
+  }
+  
+  func setFlowerStartingPositions(){
+    for (index, flower) in enumerate(flowers){
+      flower.position = CGPointMake(CGRectGetWidth(frame)*(CGFloat(index)+1), flower.randomFlowerHeight())
     }
   }
   
@@ -108,36 +103,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
   }
   
   func addBee(){
-    bee.xScale = 0.25
-    bee.yScale = 0.25
-    bee.name = "bee"
-    bee.position = CGPoint(x:CGRectGetMidX(self.frame), y:CGRectGetMidY(self.frame))
-    bee.physicsBody = SKPhysicsBody(circleOfRadius: bee.size.height / 2.75)
-    bee.physicsBody!.allowsRotation = true
+    bee.position = CGPoint(x:CGRectGetMidX(frame), y:CGRectGetHeight(frame)*(3/4))
     addChild(bee)
-    addFlap()
-  }
-  
-  func addFlap(){
-    
-    var frames:[SKTexture] = []
-    let numBees = 8
-    for index in 1...numBees {
-      var texture = SKTexture(imageNamed: "bee\(index)")
-      texture.filteringMode = .Nearest
-      frames.append(texture)
-    }
-    
-    for index in stride(from: numBees-1, through: 1, by: -1){
-      var texture = SKTexture(imageNamed: "bee\(index)")
-      texture.filteringMode = .Nearest
-      frames.append(texture)
-      frames.append(texture)
-      frames.append(texture)
-    }
-    
-    var flap = SKAction.repeatActionForever(SKAction.animateWithTextures(frames, timePerFrame: 0.01))
-    bee.runAction(flap)
   }
   
   func addRetry(){
@@ -150,72 +117,66 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     addChild(retry)
   }
   
-  override func touchesBegan(touches: NSSet, withEvent event: UIEvent) {
-      for touch: AnyObject in touches {
-        if !dead {
-          bee.physicsBody?.velocity = CGVectorMake(0, 0);
-          bee.physicsBody?.applyImpulse(CGVectorMake(0, 80))
-        } else {
-          
-          var touch = touches.anyObject() as AnyObject! as UITouch
-          var location = touch.locationInNode(self)
-          var node:SKNode? = nodeAtPoint(location)
-          
-          if let aNode = node{
-            if let name = aNode.name {
-              if name == "retry"{
-                retry.hidden = true
-                hive.position = CGPoint( x: CGRectGetMidX(frame), y: CGRectGetMaxY(frame)-50)
-                dead = false
-                flowerCount = 0
-                flowerCountLabel.text = "Flowers: 0"
-                bee.position = CGPoint(x:CGRectGetMidX(self.frame), y:CGRectGetMidY(self.frame))
-                bee.texture = SKTexture(imageNamed: "bee1")
-                addFlap()
-              }
-            }
-          }
-        }
-      }
-  }
- 
+  
+  // MARK: SKScene
   override func update(currentTime: CFTimeInterval) {
     if !dead {
-      //Update Flower
-      for aFlower in flowers {
-        aFlower.position = movePositionToLeft(aFlower.position, speed: 5.0)
+      for flower in flowers {
+        score += flower.moveToLeftAndCalculateScoreChange()
       }
-      
-      //Update Hive
-      hive.position = movePositionToLeft(hive.position, speed: 7.5)
-      
-      //Rotate Bee
       bee.zRotation = clamp( -1, max: 0.5, value: CGFloat(bee.physicsBody!.velocity.dy * ( bee.physicsBody!.velocity.dy < 0 ? 0.003 : 0.001 )) );
     }
   }
   
-  func movePositionToLeft( position:CGPoint, speed:CGFloat ) -> CGPoint {
-    var newPosition = position
-    newPosition.x = newPosition.x - speed;
-    if newPosition.x < 0 {
-      newPosition.x = CGRectGetWidth(self.frame)
+  override func touchesBegan(touches: NSSet, withEvent event: UIEvent) {
+    for touch: AnyObject in touches {
+      if !dead {
+        bee.physicsBody?.velocity = CGVectorMake(0, 0);
+        bee.physicsBody?.applyImpulse(CGVectorMake(0, 80))
+      } else {
+        
+        var touch = touches.anyObject() as AnyObject! as UITouch
+        var location = touch.locationInNode(self)
+        var node:SKNode? = nodeAtPoint(location)
+        
+        if let aNode = node{
+          if let name = aNode.name {
+            if name == "retry"{
+              reset()
+            }
+          }
+        }
+      }
     }
-    return newPosition
   }
   
-  func incrementFlowerCount(){
-    flowerCount++
-    flowerCountLabel.text = "Flowers: \(flowerCount)"
-  }
-  
+  // MARK: Lifecycle
   func gameOver(){
-    bee.removeAllActions()
-    var texture = SKTexture(imageNamed: "splat")
-    bee.texture = texture
+    if let highScore = NSUserDefaults.standardUserDefaults().integerForKey(kHighScoreKey) as Int? {
+      if score > highScore {
+        NSUserDefaults.standardUserDefaults().setInteger(score, forKey: kHighScoreKey)
+        setHighScoreLabel()
+      }
+    }
+    
+    bee.setIsDead()
     dead = true
     retry.hidden = false
   }
   
+  func reset(){
+    setFlowerStartingPositions()
+    for flower in flowers {
+      flower.reset()
+    }
+    retry.hidden = true
+    dead = false
+    score = 0
+    bee.position = CGPoint(x:CGRectGetMidX(self.frame), y:CGRectGetMidY(self.frame))
+    bee.setIsAlive()
+  }
+  
+  // MARK: Physics
   func didBeginContact(contact: SKPhysicsContact) {
     
     var tempFirstBody:SKPhysicsBody?
@@ -236,18 +197,44 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
           gameOver()
         }
         
+        if (secondBody.categoryBitMask & stemCategory) != 0{
+          gameOver()
+        }
+        
         if (secondBody.categoryBitMask & flowerCategory) != 0 {
-          if let flower = secondBody.node as? SKSpriteNode {
-            flower.texture = SKTexture(imageNamed: "flowerPoof")
+          if let flower = secondBody.node as? Flower {
+            if !flower.hit {
+              flower.collide()
+              flower.hit = true
+              incrementFlowerCount()
+            }
           }
-          incrementFlowerCount()
         }
-        
-        if (secondBody.categoryBitMask & hiveCategory) != 0 {
-          println("hive")
-        }
-        
       }
     }
+  }
+  
+  // MARK: Helpers
+  func setHighScoreLabel(){
+    if let highScore = NSUserDefaults.standardUserDefaults().integerForKey(kHighScoreKey) as Int? {
+      highScoreLabel.text = "High Score: \(highScore)"
+    }
+  }
+  
+  func incrementFlowerCount(){
+    score += 10
+  }
+  
+  func setPhysicsCategories(){
+    for aFlower in flowers {
+      aFlower.physicsBody!.categoryBitMask = flowerCategory
+      aFlower.physicsBody!.contactTestBitMask = beeCategory
+      aFlower.stem.physicsBody!.categoryBitMask = stemCategory
+      aFlower.stem.physicsBody!.contactTestBitMask = beeCategory
+    }
+    
+    bee.physicsBody!.categoryBitMask = beeCategory
+    bee.physicsBody!.contactTestBitMask = flowerCategory | bottomCategory
+    bee.physicsBody!.collisionBitMask = bottomCategory | stemCategory
   }
 }
